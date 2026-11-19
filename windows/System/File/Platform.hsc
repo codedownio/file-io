@@ -5,7 +5,7 @@
 
 module System.File.Platform where
 
-import Control.Exception (bracketOnError, try, SomeException, onException)
+import Control.Exception (bracketOnError, try, SomeException)
 import Data.Bits
 import Data.Coerce
 import Data.Maybe (fromJust)
@@ -248,7 +248,7 @@ toHandle :: WindowsPath -> IOMode -> Win32.HANDLE -> IO Handle
 toHandle fp iomode h = toHandlePosix fp iomode h <!> toHandleNative iomode h
 
 toHandleNative :: IOMode -> Win32.HANDLE -> IO Handle
-toHandleNative iomode h = (`onException` Win32.closeHandle h) $ do
+toHandleNative iomode h = do
     h' <- Win32.hANDLEToHandle h
     when (iomode == AppendMode) $ hSeek h' SeekFromEnd 0
     getLocaleEncoding >>= hSetEncoding h'
@@ -258,7 +258,7 @@ toHandle = toHandlePosix
 ##endif
 
 toHandlePosix :: WindowsPath -> IOMode -> Win32.HANDLE -> IO Handle
-toHandlePosix fp iomode h = (`onException` Win32.closeHandle h) $ do
+toHandlePosix fp iomode h = do
     when (iomode == AppendMode ) $ void $ Win32.setFilePointerEx h 0 Win32.fILE_END
     fd <- _open_osfhandle (fromIntegral (ptrToIntPtr h)) (#const _O_BINARY)
     fp' <- either (const (fmap WS.toChar . WS.unpack $ fp)) id <$> try @SomeException (WS.decodeFS fp)
